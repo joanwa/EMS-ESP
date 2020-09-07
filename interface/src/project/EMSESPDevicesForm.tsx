@@ -83,8 +83,11 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
     const { width, data } = this.props;
     return (
       <TableContainer>
-        <Typography variant="h6" color="primary" paragraph>
-          Devices:
+        <Typography variant="h6" color="primary" >
+          Devices
+        </Typography>
+        <Typography variant="caption" color="initial" paragraph>
+          <i>(click to show details)</i>
         </Typography>
         {!this.noDevices() && (
           <Table size="small" padding={isWidthDown('xs', width!) ? "none" : "default"}>
@@ -145,14 +148,14 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
       <TableContainer>
         <p></p>
         <Typography variant="h6" color="primary" paragraph>
-          Sensors:
+          Sensors
         </Typography>
         {!this.noSensors() && (
           <Table size="small" padding="default">
             <TableHead>
               <TableRow>
                 <StyledTableCell>ID</StyledTableCell>
-                <StyledTableCell align="left">Temperature</StyledTableCell>
+                <StyledTableCell align="right">Temperature</StyledTableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -161,8 +164,8 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
                   <TableCell component="th" scope="row">
                     {sensorData.id}
                   </TableCell>
-                  <TableCell align="left">
-                    {sensorData.temp}&deg;C
+                  <TableCell align="right">
+                    {sensorData.temp.toFixed(1)}&deg;C
                   </TableCell>
                 </TableRow>
               ))}
@@ -173,7 +176,7 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
           (
             <Box color="warning.main" p={0} mt={0} mb={0}>
               <Typography variant="body1">
-                No external temperature sensors detected.
+                <i>No connected Dallas temperature sensors detected</i>
               </Typography>
             </Box>
           )
@@ -285,7 +288,7 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
                   <TableCell component="th" scope="row">
                     {deviceData.name}
                   </TableCell>
-                  <TableCell align="left">
+                  <TableCell align="right">
                     {deviceData.value}
                   </TableCell>
                 </TableRow>
@@ -312,7 +315,6 @@ class EMSESPDevicesForm extends Component<EMSESPDevicesFormProps, EMSESPDevicesF
               Refresh
             </FormButton>
           </Box>
-
           <Box flexWrap="none" padding={1} whiteSpace="nowrap">
             <FormButton startIcon={<RefreshIcon />} variant="contained" color="primary" onClick={this.onScanDevices}>
               Scan Devices

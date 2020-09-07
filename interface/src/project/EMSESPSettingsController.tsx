@@ -43,7 +43,7 @@ export default restController(EMSESP_SETTINGS_ENDPOINT, EMSESPSettingsController
 type EMSESPSettingsControllerFormProps = RestFormProps<EMSESPSettings>;
 
 function EMSESPSettingsControllerForm(props: EMSESPSettingsControllerFormProps) {
-    const { data, saveData, loadData, handleValueChange } = props;
+    const { data, saveData, handleValueChange } = props;
     return (
         <ValidatorForm onSubmit={saveData}>
             <Box bgcolor="info.main" p={2} mt={2} mb={2}>
@@ -62,6 +62,77 @@ function EMSESPSettingsControllerForm(props: EMSESPSettingsControllerFormProps) 
                 type="number"
                 onChange={handleValueChange('tx_mode')}
                 margin="normal"
+            />
+            <SelectValidator name="ems_bus_id"
+                label="Bus ID"
+                value={data.ems_bus_id}
+                fullWidth
+                variant="outlined"
+                onChange={handleValueChange('ems_bus_id')}
+                margin="normal">
+                <MenuItem value={0x0B}>Service Key (0x0B)</MenuItem>
+                <MenuItem value={0x0D}>Modem (0x0D)</MenuItem>
+                <MenuItem value={0x0A}>Terminal (0x0A)</MenuItem>
+                <MenuItem value={0x0F}>Time Module (0x0F)</MenuItem>
+                <MenuItem value={0x12}>Alarm Module (0x12)</MenuItem>
+            </SelectValidator>
+            <TextValidator
+                validators={['required', 'isNumber', 'minNumber:0', 'maxNumber:40']}
+                errorMessages={['Rx GPIO is required', "Must be a number", "Must be 0 or higher", "Max value is 255"]}
+                name="rx_gpio"
+                label="Rx GPIO pin"
+                fullWidth
+                variant="outlined"
+                value={data.rx_gpio}
+                type="number"
+                onChange={handleValueChange('rx_gpio')}
+                margin="normal"
+            />
+            <TextValidator
+                validators={['required', 'isNumber', 'minNumber:0', 'maxNumber:40']}
+                errorMessages={['Tx GPIO is required', "Must be a number", "Must be 0 or higher", "Max value is 255"]}
+                name="tx_gpio"
+                label="Tx GPIO pin"
+                fullWidth
+                variant="outlined"
+                value={data.tx_gpio}
+                type="number"
+                onChange={handleValueChange('tx_gpio')}
+                margin="normal"
+            />
+            <TextValidator
+                validators={['required', 'isNumber', 'minNumber:0', 'maxNumber:40']}
+                errorMessages={['Dallas GPIO is required', "Must be a number", "Must be 0 or higher", "Max value is 255"]}
+                name="dallas_gpio"
+                label="Dallas GPIO pin (0=none)"
+                fullWidth
+                variant="outlined"
+                value={data.dallas_gpio}
+                type="number"
+                onChange={handleValueChange('dallas_gpio')}
+                margin="normal"
+            />
+            <TextValidator
+                validators={['required', 'isNumber', 'minNumber:0', 'maxNumber:40']}
+                errorMessages={['LED GPIO is required', "Must be a number", "Must be 0 or higher", "Max value is 255"]}
+                name="led_gpio"
+                label="LED GPIO pin (0=none)"
+                fullWidth
+                variant="outlined"
+                value={data.led_gpio}
+                type="number"
+                onChange={handleValueChange('led_gpio')}
+                margin="normal"
+            />
+            <BlockFormControlLabel
+                control={
+                    <Checkbox
+                        checked={data.hide_led}
+                        onChange={handleValueChange('hide_led')}
+                        value="hide_led"
+                    />
+                }
+                label="Invert/Hide LED"
             />
             <BlockFormControlLabel
                 control={
@@ -125,10 +196,7 @@ function EMSESPSettingsControllerForm(props: EMSESPSettingsControllerFormProps) 
             <FormActions>
                 <FormButton startIcon={<SaveIcon />} variant="contained" color="primary" type="submit">
                     Save
-        </FormButton>
-                <FormButton variant="contained" color="secondary" onClick={loadData}>
-                    Reset
-        </FormButton>
+                </FormButton>
             </FormActions>
         </ValidatorForm>
     );

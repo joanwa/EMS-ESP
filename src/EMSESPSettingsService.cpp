@@ -36,6 +36,11 @@ void EMSESPSettings::read(EMSESPSettings & settings, JsonObject & root) {
     root["master_thermostat"]    = settings.master_thermostat;
     root["shower_timer"]         = settings.shower_timer;
     root["shower_alert"]         = settings.shower_alert;
+    root["hide_led"]             = settings.hide_led;
+    root["rx_gpio"]              = settings.rx_gpio;
+    root["tx_gpio"]              = settings.tx_gpio;
+    root["dallas_gpio"]          = settings.dallas_gpio;
+    root["led_gpio"]             = settings.led_gpio;
 }
 
 StateUpdateResult EMSESPSettings::update(JsonObject & root, EMSESPSettings & settings) {
@@ -47,15 +52,22 @@ StateUpdateResult EMSESPSettings::update(JsonObject & root, EMSESPSettings & set
     settings.master_thermostat    = root["master_thermostat"] | EMSESP_DEFAULT_MASTER_THERMOSTAT;
     settings.shower_timer         = root["shower_timer"] | EMSESP_DEFAULT_SHOWER_TIMER;
     settings.shower_alert         = root["shower_alert"] | EMSESP_DEFAULT_SHOWER_ALERT;
+    settings.hide_led             = root["hide_led"] | EMSESP_DEFAULT_HIDE_LED;
+    settings.rx_gpio              = root["rx_gpio"] | EMSESP_DEFAULT_RX_GPIO;
+    settings.tx_gpio              = root["tx_gpio"] | EMSESP_DEFAULT_TX_GPIO;
+    settings.dallas_gpio          = root["dallas_gpio"] | EMSESP_DEFAULT_DALLAS_GPIO;
+    settings.led_gpio             = root["led_gpio"] | EMSESP_DEFAULT_LED_GPIO;
 
     return StateUpdateResult::CHANGED;
 }
 
-// this is called after the settings have been persisted to the filesystem
+// this is called after any of the settings have been persisted to the filesystem
+// either via the Web UI or via the Console
 void EMSESPSettingsService::onUpdate() {
     EMSESP::shower_.start();
-    EMSESP::system_.syslog_init();
-    EMSESP::reset_tx();
+    // EMSESP::system_.syslog_init(); // changing SysLog will require a restart
+    EMSESP::init_tx();
+    System::set_led();
 }
 
 void EMSESPSettingsService::begin() {

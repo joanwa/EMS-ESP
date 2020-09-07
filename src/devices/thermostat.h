@@ -40,10 +40,9 @@ class Thermostat : public EMSdevice {
     Thermostat(uint8_t device_type, uint8_t device_id, uint8_t product_id, const std::string & version, const std::string & name, uint8_t flags, uint8_t brand);
     class HeatingCircuit {
       public:
-        HeatingCircuit(const uint8_t hc_num, const uint16_t monitor_typeid, const uint16_t set_typeid)
+        HeatingCircuit(const uint8_t hc_num)
             : hc_num_(hc_num)
-            , monitor_typeid_(monitor_typeid)
-            , set_typeid_(set_typeid) {
+            , ha_registered_(false) {
         }
         ~HeatingCircuit() = default;
 
@@ -60,47 +59,58 @@ class Thermostat : public EMSdevice {
         uint8_t targetflowtemp    = EMS_VALUE_UINT_NOTSET;
         uint8_t summertemp        = EMS_VALUE_UINT_NOTSET;
         uint8_t nofrosttemp       = EMS_VALUE_UINT_NOTSET;
-        uint8_t designtemp        = EMS_VALUE_UINT_NOTSET; // heatingcurve design temp at MinExtTemp
-        int8_t  offsettemp        = EMS_VALUE_INT_NOTSET;  // heatingcurve offest temp at roomtemp signed!
+        uint8_t designtemp        = EMS_VALUE_UINT_NOTSET; // heating curve design temp at MinExtTemp
+        int8_t  offsettemp        = EMS_VALUE_INT_NOTSET;  // heating curve offest temp at roomtemp signed!
 
         uint8_t hc_num() const {
-            return hc_num_; // 1..10
+            return hc_num_;
+        }
+
+        bool ha_registered() const {
+            return ha_registered_;
+        }
+
+        void ha_registered(bool b) {
+            ha_registered_ = b;
+        }
+
+        // determines if the heating circuit is actually present and has data
+        bool is_active() {
+            return Helpers::hasValue(setpoint_roomTemp);
         }
 
         uint8_t get_mode(uint8_t flags) const;
         uint8_t get_mode_type(uint8_t flags) const;
 
-        uint16_t monitor_typeid() const {
-            return monitor_typeid_;
-        }
-
-        uint16_t set_typeid() const {
-            return set_typeid_;
-        }
-
         enum Mode : uint8_t { UNKNOWN, OFF, MANUAL, AUTO, DAY, NIGHT, HEAT, NOFROST, ECO, HOLIDAY, COMFORT, OFFSET, DESIGN, SUMMER };
 
-        // for sorting
+        // for sorting based on hc number
         friend inline bool operator<(const std::shared_ptr<HeatingCircuit> & lhs, const std::shared_ptr<HeatingCircuit> & rhs) {
             return (lhs->hc_num_ < rhs->hc_num_);
         }
 
       private:
-        uint8_t  hc_num_; // 1..10
-        uint16_t monitor_typeid_;
-        uint16_t set_typeid_;
+        uint8_t hc_num_;        // heating circuit number 1..10
+        bool    ha_registered_; // whether it has been registered for HA MQTT Discovery
     };
 
-    std::string mode_tostring(uint8_t mode) const;
+    static std::string mode_tostring(uint8_t mode);
 
     virtual void show_values(uuid::console::Shell & shell);
     virtual void publish_values();
-    virtual void device_info(JsonArray & root);
+    virtual void device_info_web(JsonArray & root);
     virtual bool updated_values();
     virtual void add_context_menu();
 
-    bool can_write() const {
-        return ((flags() & EMSdevice::EMS_DEVICE_FLAG_NO_WRITE) == EMSdevice::EMS_DEVICE_FLAG_NO_WRITE);
+  private:
+    static uuid::log::Logger logger_;
+
+    void console_commands(Shell & shell, unsigned int context);
+    void add_commands();
+
+    // specific thermostat characteristics, stripping the option bits at pos 6 and 7
+    inline uint8_t model() const {
+        return (this->flags() & 0x0F);
     }
 
     // each thermostat has a list of heating controller type IDs for reading and writing
@@ -108,19 +118,14 @@ class Thermostat : public EMSdevice {
     std::vector<uint16_t> set_typeids;
     std::vector<uint16_t> timer_typeids;
 
-  private:
-    static uuid::log::Logger logger_;
-
-    void console_commands(Shell & shell, unsigned int context);
-    void init_mqtt();
-
     std::string datetime_; // date and time stamp
 
     uint8_t mqtt_format_; // single, nested or ha
+    bool    changed_ = false;
 
     // Installation parameters
     uint8_t ibaMainDisplay_ =
-        EMS_VALUE_UINT_NOTSET; // display on Thermostat: 0 int. temp, 1 int. setpoint, 2 ext. temp., 3 burner temp., 4 ww temp, 5 functioning mode, 6 time, 7 data, 9 smoke temp
+        EMS_VALUE_UINT_NOTSET; // display on Thermostat: 0 int temp, 1 int setpoint, 2 ext temp, 3 burner temp, 4 ww temp, 5 functioning mode, 6 time, 7 data, 9 smoke temp
     uint8_t ibaLanguage_          = EMS_VALUE_UINT_NOTSET; // language on Thermostat: 0 german, 1 dutch, 2 french, 3 italian
     int8_t  ibaCalIntTemperature_ = EMS_VALUE_INT_NOTSET;  // offset int. temperature sensor, by * 0.1 Kelvin (-5.0 to 5.0K)
     int8_t  ibaMinExtTemperature_ = EMS_VALUE_INT_NOTSET;  // min ext temp for heating curve, in deg., 0xF6=-10, 0x0 = 0, 0xFF=-1
@@ -202,14 +207,14 @@ class Thermostat : public EMSdevice {
     static constexpr uint8_t EMS_OFFSET_JunkersSetMessage2_set_mode      = 4;  // EMS offset to set mode on thermostat
     static constexpr uint8_t EMS_OFFSET_JunkersSetMessage2_no_frost_temp = 5;
     static constexpr uint8_t EMS_OFFSET_JunkersSetMessage2_eco_temp      = 6;
-    static constexpr uint8_t EMS_OFFSET_JunkersSetMessage3_heat          = 7;
+    static constexpr uint8_t EMS_OFFSET_JunkersSetMessage2_heat_temp     = 7;
 
-#define AUTO_HEATING_CIRCUIT 0
-#define DEFAULT_HEATING_CIRCUIT 1
+    static constexpr uint8_t AUTO_HEATING_CIRCUIT = 0;
 
     // Installation settings
     static constexpr uint8_t EMS_TYPE_IBASettings = 0xA5; // installation settings
     static constexpr uint8_t EMS_TYPE_wwSettings  = 0x37; // ww settings
+    static constexpr uint8_t EMS_TYPE_time        = 0x06; // time
 
     std::shared_ptr<Thermostat::HeatingCircuit> heating_circuit(std::shared_ptr<const Telegram> telegram);
     std::shared_ptr<Thermostat::HeatingCircuit> heating_circuit(const uint8_t hc_num);
@@ -220,56 +225,66 @@ class Thermostat : public EMSdevice {
     void process_IBASettings(std::shared_ptr<const Telegram> telegram);
     void process_RCTime(std::shared_ptr<const Telegram> telegram);
     void process_RC35wwSettings(std::shared_ptr<const Telegram> telegram);
-
     void process_RC35Monitor(std::shared_ptr<const Telegram> telegram);
     void process_RC35Set(std::shared_ptr<const Telegram> telegram);
-
     void process_RC30Monitor(std::shared_ptr<const Telegram> telegram);
     void process_RC30Set(std::shared_ptr<const Telegram> telegram);
-
     void process_RC20Monitor(std::shared_ptr<const Telegram> telegram);
     void process_RC20Set(std::shared_ptr<const Telegram> telegram);
     void process_RC20Remote(std::shared_ptr<const Telegram> telegram);
-
     void process_RC20Monitor_2(std::shared_ptr<const Telegram> telegram);
     void process_RC20Set_2(std::shared_ptr<const Telegram> telegram);
-
     void process_RC10Monitor(std::shared_ptr<const Telegram> telegram);
     void process_RC10Set(std::shared_ptr<const Telegram> telegram);
-
     void process_RC300Monitor(std::shared_ptr<const Telegram> telegram);
     void process_RC300Set(std::shared_ptr<const Telegram> telegram);
-
     void process_JunkersMonitor(std::shared_ptr<const Telegram> telegram);
     void process_JunkersSet(std::shared_ptr<const Telegram> telegram);
-
+    void process_JunkersSet2(std::shared_ptr<const Telegram> telegram);
     void process_EasyMonitor(std::shared_ptr<const Telegram> telegram);
-
     void process_RC300WWmode(std::shared_ptr<const Telegram> telegram);
 
-    // set functions
-    void set_settings_minexttemp(const int8_t mt);
-    void set_settings_calinttemp(const int8_t ct);
-    void set_settings_clockoffset(const int8_t co);
-    void set_settings_display(const uint8_t ds);
-    void set_settings_building(const uint8_t bg);
-    void set_settings_language(const uint8_t lg);
-    void set_control(const uint8_t ctrl, const uint8_t hc_num);
-    void set_ww_mode(const std::string & mode);
-    void set_holiday(const char * hd, const uint8_t hc_num);
-    void set_datetime(const char * dt);
-    void set_pause(const uint8_t hrs, const uint8_t hc_num);
-    void set_party(const uint8_t hrs, const uint8_t hc_num);
-    void set_mode(const uint8_t mode, const uint8_t hc_num);
-    void set_mode(const std::string & mode, const uint8_t hc_num);
+    // internal helper functions
+    void set_mode_n(const uint8_t mode, const uint8_t hc_num);
+
+    void set_temperature_value(const char * value, const int8_t id, const uint8_t mode);
     void set_temperature(const float temperature, const std::string & mode, const uint8_t hc_num);
     void set_temperature(const float temperature, const uint8_t mode, const uint8_t hc_num);
 
-    // MQTT functions
-    void thermostat_cmd(const char * message);
+    // for HA specifically. MQTT functions.
     void thermostat_cmd_temp(const char * message);
     void thermostat_cmd_mode(const char * message);
-};
+
+    // set functions - these use the id/hc
+    void set_mode(const char * value, const int8_t id);
+    void set_control(const char * value, const int8_t id);
+    void set_holiday(const char * value, const int8_t id);
+    void set_pause(const char * value, const int8_t id);
+    void set_party(const char * value, const int8_t id);
+
+    void set_temp(const char * value, const int8_t id);
+    void set_nighttemp(const char * value, const int8_t id);
+    void set_daytemp(const char * value, const int8_t id);
+    void set_nofrosttemp(const char * value, const int8_t id);
+    void set_ecotemp(const char * value, const int8_t id);
+    void set_heattemp(const char * value, const int8_t id);
+    void set_summertemp(const char * value, const int8_t id);
+    void set_designtemp(const char * value, const int8_t id);
+    void set_offsettemp(const char * value, const int8_t id);
+    void set_holidaytemp(const char * value, const int8_t id);
+
+    void set_remotetemp(const char * value, const int8_t id);
+
+    // set functions - these don't use the id/hc, the parameters are ignored
+    void set_wwmode(const char * value, const int8_t id);
+    void set_datetime(const char * value, const int8_t id);
+    void set_minexttemp(const char * value, const int8_t id);
+    void set_clockoffset(const char * value, const int8_t id);
+    void set_calinttemp(const char * value, const int8_t id);
+    void set_display(const char * value, const int8_t id);
+    void set_building(const char * value, const int8_t id);
+    void set_language(const char * value, const int8_t id);
+}; // namespace emsesp
 
 } // namespace emsesp
 

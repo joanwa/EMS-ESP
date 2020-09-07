@@ -59,7 +59,9 @@ class EMSESP {
     static void start();
     static void loop();
 
-    static void publish_all_values();
+    static void publish_device_values(uint8_t device_type);
+    static void publish_other_values();
+    static void publish_sensor_values(const bool force = false);
 
 #ifdef EMSESP_STANDALONE
     static void run_test(uuid::console::Shell & shell, const std::string & command); // only for testing
@@ -78,15 +80,19 @@ class EMSESP {
                                    uint8_t *      message_data,
                                    const uint8_t  message_length,
                                    const uint16_t validate_typeid);
+    static void send_write_request(const uint16_t type_id, const uint8_t dest, const uint8_t offset, const uint8_t value);
+    static void send_write_request(const uint16_t type_id, const uint8_t dest, const uint8_t offset, const uint8_t value, const uint16_t validate_typeid);
+
     static void send_raw_telegram(const char * data);
     static bool device_exists(const uint8_t device_id);
 
-    static void device_info(const uint8_t unique_id, JsonObject & root);
+    static void device_info_web(const uint8_t unique_id, JsonObject & root);
 
     static uint8_t count_devices(const uint8_t device_type);
 
     static uint8_t actual_master_thermostat();
     static void    actual_master_thermostat(const uint8_t device_id);
+    static uint8_t check_master_device(const uint8_t device_id, const uint16_t type_id, const bool read);
 
     static void show_device_values(uuid::console::Shell & shell);
     static void show_sensor_values(uuid::console::Shell & shell);
@@ -96,7 +102,7 @@ class EMSESP {
 
     static void add_context_menus();
 
-    static void reset_tx();
+    static void init_tx();
 
     static void incoming_telegram(uint8_t * data, const uint8_t length);
 
@@ -119,6 +125,9 @@ class EMSESP {
     static uint8_t watch() {
         return watch_;
     }
+    static void set_read_id(uint16_t id) {
+        read_id_ = id;
+    }
 
     enum Bus_status : uint8_t { BUS_STATUS_CONNECTED = 0, BUS_STATUS_TX_ERRORS, BUS_STATUS_OFFLINE };
     static uint8_t bus_status();
@@ -134,6 +143,8 @@ class EMSESP {
     static void fetch_device_values(const uint8_t device_id = 0);
 
     static bool add_device(const uint8_t device_id, const uint8_t product_id, std::string & version, const uint8_t brand);
+    static void scan_devices();
+    static void clear_all_devices();
 
     static std::vector<std::unique_ptr<EMSdevice>> emsdevices;
 
@@ -181,6 +192,8 @@ class EMSESP {
     static uint8_t  actual_master_thermostat_;
     static uint16_t watch_id_;
     static uint8_t  watch_;
+    static uint16_t read_id_;
+    static uint16_t publish_id_;
     static bool     tap_water_active_;
 
     static uint8_t unique_id_count_;

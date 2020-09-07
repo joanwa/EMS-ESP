@@ -47,19 +47,19 @@ class System {
     static void format(uuid::console::Shell & shell);
 
     static void console_commands(Shell & shell, unsigned int context);
-    static void mqtt_commands(const char * message);
+
+    static void mqtt_command_pin(const char * value, const int8_t id);
+    static void mqtt_command_send(const char * value, const int8_t id);
 
     static uint8_t free_mem();
     static void    upload_status(bool in_progress);
     static bool    upload_status();
-
-    void syslog_init();
-
-    // heartbeat
-    void set_heartbeat(bool system_heartbeat);
-    void send_heartbeat();
-
-    void check_upgrade();
+    void           syslog_init();
+    void           set_heartbeat(bool system_heartbeat);
+    void           send_heartbeat();
+    static void    show_mem(const char * note);
+    static void    set_led();
+    bool           check_upgrade();
 
   private:
     static uuid::log::Logger logger_;
@@ -68,33 +68,19 @@ class System {
     static uuid::syslog::SyslogService syslog_;
 #endif
 
-    static constexpr uint32_t SYSTEM_CHECK_FREQUENCY    = 10000; // check every 10 seconds
-    static constexpr uint32_t LED_WARNING_BLINK         = 1000;  // pulse to show no connection, 1 sec
-    static constexpr uint32_t LED_WARNING_BLINK_FAST    = 100;   // flash quickly for boot up sequence
-    static constexpr uint32_t SYSTEM_HEARTBEAT_INTERVAL = 60000; // in milliseconds, how often the MQTT heartbeat is sent (1 min)
+    static constexpr uint32_t SYSTEM_CHECK_FREQUENCY         = 5000;  // check every 5 seconds
+    static constexpr uint32_t LED_WARNING_BLINK              = 1000;  // pulse to show no connection, 1 sec
+    static constexpr uint32_t LED_WARNING_BLINK_FAST         = 100;   // flash quickly for boot up sequence
+    static constexpr uint32_t SYSTEM_HEARTBEAT_INTERVAL      = 60000; // in milliseconds, how often the MQTT heartbeat is sent (1 min)
+    static constexpr uint32_t SYSTEM_MEASURE_ANALOG_INTERVAL = 1100;
 
-// internal LED
-#ifndef EMSESP_NO_LED
-#if defined(ESP8266)
-    static constexpr uint8_t LED_GPIO = 2;
-    static constexpr uint8_t LED_ON   = LOW;
-#elif defined(ESP32)
-#ifdef WEMOS_D1_32
-    static constexpr uint8_t LED_GPIO = 2; // on Wemos D1-32
-    static constexpr uint8_t LED_ON   = HIGH;
-#else
-    static constexpr uint8_t LED_GPIO = 5;
-    static constexpr uint8_t LED_ON   = LOW;
-#endif
-#endif
-#else
-    static constexpr uint8_t LED_GPIO = 0; // no LED
-    static constexpr uint8_t LED_ON   = 0;
-#endif
+    // internal LED
+    static constexpr uint8_t LED_ON = LOW;
 
     void led_monitor();
     void set_led_speed(uint32_t speed);
     void system_check();
+    void measure_analog();
 
     static void   show_system(uuid::console::Shell & shell);
     static void   show_users(uuid::console::Shell & shell);
@@ -106,16 +92,16 @@ class System {
     static uint32_t heap_start_;
     static int      reset_counter_;
     uint32_t        last_heartbeat_ = 0;
-
-    // OTA
-    static bool upload_status_; // true if we're in the middle of a OTA firmware upload
+    static bool     upload_status_; // true if we're in the middle of a OTA firmware upload
+    static uint16_t analog_;
 
     // settings
-    uint8_t  tx_mode_;
-    bool     system_heartbeat_;
-    uint8_t  syslog_level_;
-    uint32_t syslog_mark_interval_;
-    String   syslog_host_;
+    bool           system_heartbeat_;
+    static bool    hide_led_;
+    uint8_t        syslog_level_;
+    uint32_t       syslog_mark_interval_;
+    String         syslog_host_;
+    static uint8_t led_gpio_;
 };
 
 } // namespace emsesp
